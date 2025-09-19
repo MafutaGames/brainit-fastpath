@@ -151,6 +151,32 @@ function App() {
                   }`}>
                     Quick Assessment for {selectedIndustry}
                   </h2>
+                  
+                  {/* Progress Bar */}
+                  <div className="mb-6">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className={`text-sm font-medium transition-colors ${
+                        isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                      }`}>
+                        Progress: {Object.keys(answers).length} of {currentQuestions.length} questions
+                      </span>
+                      <span className={`text-sm transition-colors ${
+                        isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                      }`}>
+                        {Math.round((Object.keys(answers).length / currentQuestions.length) * 100)}%
+                      </span>
+                    </div>
+                    <div className={`w-full rounded-full h-2 transition-colors ${
+                      isDarkMode ? 'bg-gray-700' : 'bg-gray-200'
+                    }`}>
+                      <div 
+                        className="bg-blue-600 h-2 rounded-full transition-all duration-300 ease-out"
+                        style={{ 
+                          width: `${(Object.keys(answers).length / currentQuestions.length) * 100}%` 
+                        }}
+                      ></div>
+                    </div>
+                  </div>
                   <div className="space-y-4">
                     {currentQuestions.map(question => (
                       <div key={question.id} className={`p-4 border rounded-lg transition-colors ${
