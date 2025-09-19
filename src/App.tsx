@@ -1,153 +1,265 @@
-import React, { useMemo, useState } from "react";
-import { QUESTIONS, type Industry, type Question } from "./questions";
+import React, { useState } from 'react'
+import { Moon, Sun } from 'lucide-react'
+import { questions } from './questions'
 
-type Answers = Record<string, boolean | string | undefined>;
+interface Recommendation {
+  title: string
+  description: string
+  url: string
+  buttonText: string
+}
 
-function scoreQuestions(qs: Question[], a: Answers) {
-  let score = 0;
-  for (const q of qs) {
-    if (q.type === "choice") continue;
-    const yes = a[q.id] === true;
-    if (yes) score += q.weight ?? 1;
+function App() {
+  const [isDarkMode, setIsDarkMode] = useState(true)
+  const [selectedIndustry, setSelectedIndustry] = useState<string>('')
+  const [answers, setAnswers] = useState<Record<string, boolean>>({})
+  const [showRecommendation, setShowRecommendation] = useState(false)
+
+  const industries = ['Boutique', 'Coffee Shop', 'Legal', 'Dental', 'Art Gallery']
+
+  const handleIndustryChange = (industry: string) => {
+    setSelectedIndustry(industry)
+    setAnswers({})
+    setShowRecommendation(false)
   }
-  return score;
-}
 
-function recommend(score: number) {
-  if (score >= 7) return { tier: "Basic AI Setup ($250)", cta: "See what’s included", href: "https://brainitconsulting.com/pricing" };
-  if (score >= 4) return { tier: "Book a $50 Pro Work Session", cta: "Book now", href: "https://brainitconsulting.com/book-pro-work-session" };
-  return { tier: "Start with a Free Prototype", cta: "Get started", href: "https://brainitconsulting.com" };
-}
+  const handleAnswerChange = (questionId: string, answer: boolean) => {
+    setAnswers(prev => ({
+      ...prev,
+      [questionId]: answer
+    }))
+  }
 
-const industries: Industry[] = ["Boutique", "Coffee Shop", "Legal", "Dental", "Art Gallery"];
+  const calculateScore = () => {
+    if (!selectedIndustry) return 0
+    
+    const industryQuestions = questions[selectedIndustry] || []
+    let score = 0
+    
+    industryQuestions.forEach(question => {
+      if (answers[question.id]) {
+        score += question.weight || 1
+      }
+    })
+    
+    return score
+  }
 
-export default function App() {
-  const [industry, setIndustry] = useState<Industry>("Boutique");
-  const [answers, setAnswers] = useState<Answers>({});
-  const [submitted, setSubmitted] = useState(false);
+  const getRecommendation = (score: number): Recommendation => {
+    if (score <= 3) {
+      return {
+        title: "Start with a Free Prototype",
+        description: "Let's explore your automation potential with a no-cost prototype to demonstrate value.",
+        url: "https://brainitconsulting.com",
+        buttonText: "Get Free Prototype"
+      }
+    } else if (score <= 6) {
+      return {
+        title: "Book a $50 Pro Work Session",
+        description: "You're ready for a focused session to map out your automation strategy and quick wins.",
+        url: "https://brainitconsulting.com/book-pro-work-session",
+        buttonText: "Book Pro Session"
+      }
+    } else {
+      return {
+        title: "Basic AI Setup ($250)",
+        description: "You have clear automation needs. Let's implement a comprehensive AI solution for your business.",
+        url: "https://brainitconsulting.com/pricing",
+        buttonText: "Get AI Setup"
+      }
+    }
+  }
 
-  const qs = useMemo(() => QUESTIONS[industry], [industry]);
-  const score = useMemo(() => scoreQuestions(qs, answers), [qs, answers]);
-  const rec = useMemo(() => recommend(score), [score]);
+  const handleSubmit = () => {
+    setShowRecommendation(true)
+  }
 
-  const reset = () => { setAnswers({}); setSubmitted(false); };
+  const handleReset = () => {
+    setSelectedIndustry('')
+    setAnswers({})
+    setShowRecommendation(false)
+  }
 
-  const onToggle = (id: string) =>
-    setAnswers((prev) => ({ ...prev, [id]: !(prev[id] === true) }));
-
-  const onChoose = (id: string, value: string) =>
-    setAnswers((prev) => ({ ...prev, [id]: value }));
+  const currentQuestions = selectedIndustry ? questions[selectedIndustry] || [] : []
+  const score = calculateScore()
+  const recommendation = getRecommendation(score)
 
   return (
-    <main className=\"min-h-screen bg-gray-50 text-gray-900\">
-      <div className=\"mx-auto max-w-2xl p-6\">
-        <header className=\"mb-6\">
-          <h1 className=\"text-2xl font-semibold\">BrainIT Automation — Fast Path</h1>
-          <p className=\"text-sm text-gray-600\">A quick way to pick the right next step for your business.</p>
-        </header>
-
-        <section className=\"mb-4 rounded-xl border bg-white p-4 shadow-sm\">
-          <label className=\"mb-2 block text-sm font-medium\">Select your industry</label>
-          <select
-            className=\"w-full rounded-lg border px-3 py-2 outline-none\"
-            value={industry}
-            onChange={(e) => { setIndustry(e.target.value as Industry); reset(); }}
-          >
-            {industries.map((i) => <option key={i} value={i}>{i}</option>)}
-          </select>
-        </section>
-
-        <section className=\"mb-4 rounded-xl border bg-white p-4 shadow-sm\">
-          <h2 className=\"mb-3 text-lg font-medium\">Quick questions</h2>
-          <div className=\"space-y-2\">
-            {qs.map((q) => (
-              <div key={q.id} className=\"flex items-start gap-3\">
-                {q.type !== \"choice\" ? (
-                  <>
-                    <input
-                      id={q.id}
-                      type=\"checkbox\"
-                      className=\"mt-1 h-4 w-4 cursor-pointer rounded border-gray-300\"
-                      checked={answers[q.id] === true}
-                      onChange={() => onToggle(q.id)}
-                    />
-                    <label htmlFor={q.id} className=\"cursor-pointer select-none\">{q.label}</label>
-                    {q.weight === 2 && <span className=\"ml-auto rounded bg-indigo-50 px-2 py-0.5 text-xs text-indigo-700\">High impact</span>}
-                  </>
-                ) : (
-                  <div className=\"w-full\">
-                    <div className=\"mb-1 font-medium\">{q.label}</div>
-                    <div className=\"flex flex-wrap gap-2\">
-                      {q.choices?.map((c) => (
-                        <button
-                          key={c.value}
-                          type=\"button\"
-                          onClick={() => onChoose(q.id, c.value)}
-                          className={\`${answers[q.id]===c.value ? \"border-indigo-600 bg-indigo-50 text-indigo-700\" : \"border-gray-300 bg-white\"} rounded-lg border px-3 py-1 text-sm\`}
-                        >
-                          {c.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-
-          <div className=\"mt-4 flex gap-2\">
-            <button
-              onClick={() => setSubmitted(true)}
-              className=\"rounded-xl bg-gray-900 px-4 py-2 text-white hover:bg-gray-800\"
-            >
-              See recommendation
-            </button>
-            <button
-              onClick={reset}
-              className=\"rounded-xl border border-gray-300 px-4 py-2 hover:bg-gray-100\"
-            >
-              Reset
-            </button>
-          </div>
-        </section>
-
-        {submitted && (
-          <section className=\"rounded-xl border bg-white p-4 shadow-sm\">
-            <div className=\"flex items-center justify-between\">
-              <h3 className=\"text-lg font-semibold\">Your result</h3>
-              <span className=\"text-sm text-gray-500\">Score: {score}</span>
-            </div>
-            <p className=\"mt-2\">
-              Recommendation: <span className=\"font-medium\">{rec.tier}</span>
-            </p>
-            {typeof answers[\"urgency\"] === \"string\" && (
-              <p className=\"mt-1 text-sm text-gray-600\">
-                Urgency: {(answers[\"urgency\"] as string).toUpperCase()}
-              </p>
-            )}
-            <div className=\"mt-4\">
-              <a
-                href={rec.href}
-                target=\"_blank\"
-                rel=\"noreferrer\"
-                className=\"inline-flex items-center rounded-xl bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-500\"
-              >
-                {rec.cta}
-                <svg className=\"ml-2 h-4 w-4\" fill=\"currentColor\" viewBox=\"0 0 20 20\">
-                  <path d=\"M12.293 2.293a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L14 5.414V15a1 1 0 11-2 0V5.414L8.707 7.707A1 1 0 117.293 6.293l4-4z\" />
-                </svg>
-              </a>
-            </div>
-            <p className=\"mt-3 text-xs text-gray-500\">
-              This tool is advisory. For complex setups, book a session.
-            </p>
-          </section>
-        )}
-
-        <footer className=\"mt-8 text-center text-xs text-gray-500\">
-          © {new Date().getFullYear()} BrainIT Consulting — Make IT & AI simple.
-        </footer>
+    <div className={`min-h-screen py-8 px-4 transition-colors ${
+      isDarkMode ? 'bg-gray-900' : 'bg-gray-50'
+    }`}>
+      {/* Theme Toggle */}
+      <div className="fixed top-4 right-4 z-10">
+        <button
+          onClick={() => setIsDarkMode(!isDarkMode)}
+          className={`p-3 rounded-full transition-colors ${
+            isDarkMode 
+              ? 'bg-gray-800 text-yellow-400 hover:bg-gray-700' 
+              : 'bg-white text-gray-600 hover:bg-gray-100'
+          } shadow-lg`}
+          aria-label="Toggle theme"
+        >
+          {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+        </button>
       </div>
-    </main>
-  );
+
+      <div className="max-w-2xl mx-auto">
+        <div className={`rounded-lg shadow-lg p-8 transition-colors ${
+          isDarkMode ? 'bg-gray-800' : 'bg-white'
+        }`}>
+          <h1 className={`text-3xl font-bold mb-2 text-center transition-colors ${
+            isDarkMode ? 'text-white' : 'text-gray-900'
+          }`}>
+            BrainIT Automation — Fast Path
+          </h1>
+          <p className={`text-center mb-8 transition-colors ${
+            isDarkMode ? 'text-gray-300' : 'text-gray-600'
+          }`}>
+            Find your perfect automation solution in just a few questions
+          </p>
+
+          {!showRecommendation ? (
+            <>
+              {/* Industry Selection */}
+              <div className="mb-8">
+                <label className={`block text-sm font-medium mb-3 transition-colors ${
+                  isDarkMode ? 'text-gray-200' : 'text-gray-700'
+                }`}>
+                  What type of business do you run?
+                </label>
+                <select
+                  value={selectedIndustry}
+                  onChange={(e) => handleIndustryChange(e.target.value)}
+                  className={`w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
+                    isDarkMode 
+                      ? 'bg-gray-700 border-gray-600 text-white' 
+                      : 'bg-white border-gray-300 text-gray-900'
+                  }`}
+                >
+                  <option value="">Select your industry...</option>
+                  {industries.map(industry => (
+                    <option key={industry} value={industry}>{industry}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Questions */}
+              {selectedIndustry && currentQuestions.length > 0 && (
+                <div className="mb-8">
+                  <h2 className={`text-xl font-semibold mb-4 transition-colors ${
+                    isDarkMode ? 'text-white' : 'text-gray-900'
+                  }`}>
+                    Quick Assessment for {selectedIndustry}
+                  </h2>
+                  <div className="space-y-4">
+                    {currentQuestions.map(question => (
+                      <div key={question.id} className={`p-4 border rounded-lg transition-colors ${
+                        isDarkMode ? 'border-gray-600 bg-gray-700' : 'border-gray-200 bg-white'
+                      }`}>
+                        <div className="flex items-start space-x-3">
+                          <div className="flex-1">
+                            <p className={`font-medium transition-colors ${
+                              isDarkMode ? 'text-white' : 'text-gray-900'
+                            }`}>{question.text}</p>
+                            {question.description && (
+                              <p className={`text-sm mt-1 transition-colors ${
+                                isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                              }`}>{question.description}</p>
+                            )}
+                          </div>
+                          <div className="flex space-x-4">
+                            <label className={`flex items-center transition-colors ${
+                              isDarkMode ? 'text-gray-200' : 'text-gray-700'
+                            }`}>
+                              <input
+                                type="radio"
+                                name={question.id}
+                                checked={answers[question.id] === true}
+                                onChange={() => handleAnswerChange(question.id, true)}
+                                className="mr-2 text-blue-600"
+                              />
+                              Yes
+                            </label>
+                            <label className={`flex items-center transition-colors ${
+                              isDarkMode ? 'text-gray-200' : 'text-gray-700'
+                            }`}>
+                              <input
+                                type="radio"
+                                name={question.id}
+                                checked={answers[question.id] === false}
+                                onChange={() => handleAnswerChange(question.id, false)}
+                                className="mr-2 text-blue-600"
+                              />
+                              No
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {Object.keys(answers).length === currentQuestions.length && (
+                    <div className="mt-6 text-center">
+                      <button
+                        onClick={handleSubmit}
+                        className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                      >
+                        Get My Recommendation
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          ) : (
+            /* Recommendation */
+            <div className="text-center">
+              <div className={`border rounded-lg p-6 mb-6 transition-colors ${
+                isDarkMode 
+                  ? 'bg-blue-900/20 border-blue-700' 
+                  : 'bg-blue-50 border-blue-200'
+              }`}>
+                <h2 className={`text-2xl font-bold mb-3 transition-colors ${
+                  isDarkMode ? 'text-blue-300' : 'text-blue-900'
+                }`}>
+                  {recommendation.title}
+                </h2>
+                <p className={`mb-4 transition-colors ${
+                  isDarkMode ? 'text-blue-200' : 'text-blue-800'
+                }`}>
+                  {recommendation.description}
+                </p>
+                <div className={`text-sm mb-4 transition-colors ${
+                  isDarkMode ? 'text-blue-300' : 'text-blue-700'
+                }`}>
+                  Your automation readiness score: <span className="font-bold">{score}</span>
+                </div>
+                <a
+                  href={recommendation.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                >
+                  {recommendation.buttonText}
+                </a>
+              </div>
+              
+              <button
+                onClick={handleReset}
+                className={`font-medium transition-colors ${
+                  isDarkMode 
+                    ? 'text-gray-300 hover:text-white' 
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                ← Start Over
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
 }
+
+export default App
